@@ -1,3 +1,5 @@
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import projects.JsonFileReader;
 import projects.Order;
@@ -10,10 +12,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class JsonFileReaderTest {
 
+    JsonFileReader reader;
+
+    @BeforeEach
+    public void setUp() {
+        reader = new JsonFileReader();
+    }
+
     // test checking whether the size of ArrayList returned by JsonFileReader.readOrders() is correct
     @Test
     public void testReadingOrdersListLength() {
-        JsonFileReader reader = new JsonFileReader();
         ArrayList<Order> orders = reader.readOrders("src/main/resources/data/orders.json");
         assertEquals(4, orders.size());
     }
@@ -21,7 +29,6 @@ public class JsonFileReaderTest {
     // test checking whether the size of ArrayList returned by JsonFileReader.readPaymentMethods() is correct
     @Test
     public void testReadingPaymentMethodsListLength() {
-        JsonFileReader reader = new JsonFileReader();
         ArrayList<PaymentMethod> paymentMethods = reader.readPaymentMethods("src/main/resources/data/paymentmethods.json");
         assertEquals(3, paymentMethods.size());
     }
@@ -29,7 +36,6 @@ public class JsonFileReaderTest {
     // test checking whether the contents of ArrayList returned by JsonFileReader.readOrders() are correct
     @Test
     public void testReadingOrdersListContent() {
-        JsonFileReader reader = new JsonFileReader();
         ArrayList<Order> orders = reader.readOrders("src/main/resources/data/orders.json");
         assertEquals(new Order("ORDER1", 100.0, new ArrayList<>(List.of("\"mZysk\""))), orders.getFirst());
         assertEquals(new Order("ORDER2", 200.0, new ArrayList<>(List.of("\"BosBankrut\""))), orders.get(1));
@@ -40,15 +46,20 @@ public class JsonFileReaderTest {
     // test checking whether the contents of ArrayList returned by JsonFileReader.readPaymentMethods() are correct
     @Test
     public void testReadingPaymentMethodsListContent() {
-        JsonFileReader reader = new JsonFileReader();
         ArrayList<PaymentMethod> paymentMethods = reader.readPaymentMethods("src/main/resources/data/paymentmethods.json");
         assertEquals(new PaymentMethod("PUNKTY", 15, 100.0), paymentMethods.getFirst());
     }
 
-    // test checking whether JsonFileReader.readOrders() returns empty ArrayList when the file does not exist
+    // test checking whether JsonFileReader.readOrders() throws empty ArrayList when the file does not exist
     @Test
-    public void testReadingOrdersListContentWithNonExistingFile() {
-        JsonFileReader reader = new JsonFileReader();
-        assertTrue(() -> reader.readOrders("src/main/resources/data/orders_empty.json").isEmpty());
+    public void testReadingOrdersListContentWithNonExistingFileThrowsException() {
+        assertThrows(RuntimeException.class, () -> reader.readOrders("src/main/resources/data/empty.json"));
     }
+
+    // test checking whether JsonFileReader.readPaymentMethods() throws empty ArrayList when the file does not exist
+    @Test
+    public void testReadingPaymentMethodsListContentWithNonExistingFileThrowsException() {
+        assertThrows(RuntimeException.class, () -> reader.readPaymentMethods("src/main/resources/data/empty.json"));
+    }
+
 }

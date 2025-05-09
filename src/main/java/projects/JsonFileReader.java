@@ -2,6 +2,7 @@ package projects;
 
 import jakarta.json.*;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,7 +37,8 @@ public class JsonFileReader {
                 Order order = new Order(id, value, promotions);
                 orders.add(order);
             }
-
+        } catch (FileNotFoundException fileNotFoundException) {
+            throw new RuntimeException("File not found: " + fileNotFoundException.getMessage(), fileNotFoundException);
         } catch (IOException ioException) {
             System.err.println(ioException.getMessage());
             ioException.printStackTrace();
@@ -68,6 +70,8 @@ public class JsonFileReader {
                 paymentMethods.add(paymentMethod);
             }
 
+        } catch (FileNotFoundException fileNotFoundException) {
+            throw new RuntimeException("File not found: " + fileNotFoundException.getMessage(), fileNotFoundException);
         } catch (IOException ioException) {
             System.err.println(ioException.getMessage());
             ioException.printStackTrace();
