@@ -2,6 +2,7 @@ package projects;
 
 import java.util.Objects;
 
+// class for storing payment methods
 public class PaymentMethod {
     private final String id;
     private final double discount;
@@ -27,15 +28,6 @@ public class PaymentMethod {
 
     public void setLimit(double limit) {
         this.limit = limit;
-    }
-
-    @Override
-    public String toString() {
-        return "PaymentMethod{" +
-                "id='" + id + '\'' +
-                ", discount=" + discount +
-                ", limit=" + limit +
-                '}';
     }
 
     @Override

@@ -1,16 +1,26 @@
 package projects;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
+import java.util.*;
 
 public class CalculationsClass {
-    private ArrayList<Order> orders;
-    private HashMap<String, ArrayList<Order>> ordersByPromotion;
-    private ArrayList<PaymentMethod> paymentMethods;
-    private HashMap<String, PaymentMethod> paymentMethodsById;
-    private HashMap<String, Double> costs;
-    private ArrayList<PaymentAssignmentOptions> assignments;
+
+    // ArrayList for storing orders
+    private final ArrayList<Order> orders;
+
+    // HashMap for storing orders with promotion as a key
+    private final HashMap<String, ArrayList<Order>> ordersByPromotion;
+
+    // ArrayList for storing payment methods
+    private final ArrayList<PaymentMethod> paymentMethods;
+
+    // HashMap for storing payment methods with IDs as a key
+    private final HashMap<String, PaymentMethod> paymentMethodsById;
+
+    // HashMap for storing costs for a given payment method
+    private final HashMap<String, Double> costs;
+
+    // ArrayLists for storing possible assignments for a given payment method
+    private final ArrayList<PaymentAssignmentOption> assignments;
 
     public CalculationsClass(String ordersPath, String paymentMethodsPath) {
         JsonFileReader jsonFileReader = new JsonFileReader(ordersPath, paymentMethodsPath);
@@ -22,122 +32,231 @@ public class CalculationsClass {
         this.assignments = new ArrayList<>();
     }
 
-    void generateAssignments() {
+    // method for generating possible assignments for each payment method
+    public void generateAssignments() {
 
+        // for each payment method
         for (PaymentMethod paymentMethod : paymentMethods) {
 
-            if (paymentMethod.getId().equalsIgnoreCase("PUNKTY")) {
+            String methodId = paymentMethod.getId();
 
+            // if the payment method is "PUNKTY"
+            if (methodId.equalsIgnoreCase("PUNKTY")) {
+
+                // for each order
                 for (Order order : orders) {
 
-                    if (order.getValue() <= paymentMethod.getLimit()) {
+                    double orderValue = order.getValue();
 
-                        double discount = order.getValue() * (paymentMethod.getDiscount() / 100.0);
-                        double finalCost = order.getValue() - discount;
-                        assignments.add(new PaymentAssignmentOptions(order, paymentMethod.getId(), AssignmentType.POINTS, finalCost, discount, finalCost));
+                    // if there are enough points to pay fully with them for this order
+                    if (orderValue <= paymentMethod.getLimit()) {
 
-                    } else if (paymentMethod.getLimit() >= order.getValue() * 0.1) {
+                        // calculate the discount and cost for that order
+                        double discount = orderValue * (paymentMethod.getDiscount() / 100.0);
+                        double finalCost = orderValue - discount;
 
-                        double discount = order.getValue() * 0.1;
-                        double finalCost = order.getValue() - discount;
-                        double usedAmount = order.getValue() * 0.1; //  TODO ewentualna zmiana
-                        assignments.add(new PaymentAssignmentOptions(order, paymentMethod.getId(), AssignmentType.PARTIAL, usedAmount, discount, finalCost));
+                        // add this assignment option to assignments ArrayList
+                        assignments.add(new PaymentAssignmentOption(order, methodId, AssignmentType.POINTS, finalCost, discount, finalCost));
 
+                        // if there aren't enough points to pay fully, but enough to qualify for a 10% discount for paying partially with them
+                    } else if (paymentMethod.getLimit() >= orderValue * 0.10) {
+
+                        // calculate the discount and final cost of the order, use just enough points to qualify for discount
+                        double discount = orderValue * 0.10;
+                        double finalCost = orderValue - discount;
+                        double usedAmount = orderValue * 0.10;
+
+                        // add this assignment option to assignments ArrayList
+                        assignments.add(new PaymentAssignmentOption(order, methodId, AssignmentType.PARTIAL, usedAmount, discount, finalCost));
                     }
-
-
                 }
 
+                // if the payment method is other than "PUNKTY"
             } else {
 
-                for (Order order : ordersByPromotion.get(paymentMethod.getId())) {
-                    if (!order.isPaid() && order.getValue() <= paymentMethod.getLimit()) {
-                        double discount = order.getValue() * (paymentMethod.getDiscount() / 100.0);
-                        double finalCost = order.getValue() - discount;
-                        assignments.add(new PaymentAssignmentOptions(order, paymentMethod.getId(), AssignmentType.CARD, finalCost, discount, finalCost));
+                // for each order, that can use the given payment method
+                for (Order order : ordersByPromotion.getOrDefault(methodId, new ArrayList<>())) {
+
+                    double orderValue = order.getValue();
+
+                    // if there are enough funds for the given payment method to pay fully for this order
+                    if (orderValue <= paymentMethod.getLimit()) {
+
+                        // calculate discount and final cost of the order
+                        double discount = orderValue * (paymentMethod.getDiscount() / 100.0);
+                        double finalCost = orderValue - discount;
+
+                        // add this assignment option to assignments ArrayList
+                        assignments.add(new PaymentAssignmentOption(order, methodId, AssignmentType.CARD, finalCost, discount, finalCost));
                     }
                 }
             }
         }
     }
 
-    void chooseBestOption() {
+    public void chooseBestOption() {
 
+        // generate possible assignments
         generateAssignments();
 
-        assignments.sort(Comparator.comparing(PaymentAssignmentOptions::getDiscount).reversed());
+        // sort assignments in order of the payment method's priority (firstly wholly by points, then wholly by card,
+        // lastly partially by points and by card) and then in order of decreasing discount
+        assignments.sort((a, b) -> {
 
-        for (PaymentAssignmentOptions assignment : assignments) {
+            // check priority of payment's type
+            int typePriority = getTypePriority(a.assignmentType()) - getTypePriority(b.assignmentType());
 
-            System.out.println(assignment);
+            // if types of payment are different, sort them in order of priority
+            if (typePriority != 0)
+                return typePriority;
 
-            if (!assignment.getOrder().isPaid()) {
+            // if they are the same, sort them in order of decreasing discount
+            return Double.compare(b.discount(), a.discount());
+        });
 
-                PaymentMethod paymentMethod = paymentMethodsById.get(assignment.getPaymentMethodId());
+        // set for storing IDs of orders already assigned to a particular payment method
+        Set<String> assignedOrders = new HashSet<>();
 
-                if (paymentMethod.getLimit() >= assignment.getUsedAmount()) {
-                    costs.merge(paymentMethod.getId(), assignment.getUsedAmount(), Double::sum);
-                    assignment.getOrder().setPaid(true);
-                    paymentMethod.setLimit(paymentMethod.getLimit() - assignment.getUsedAmount());
-                }
+        // for each assignment
+        for (PaymentAssignmentOption assignment : assignments) {
+
+            Order order = assignment.order();
+
+            // skip if the order has been already paid or the order has been already assigned to some payment method
+            if (order.isPaid() || assignedOrders.contains(order.getId())) continue;
+
+            // get a payment method assigned to this assignment and funds available for it
+            PaymentMethod method = paymentMethodsById.get(assignment.paymentMethodId());
+            double available = method.getLimit();
+
+            // if there are enough available funds for given payment method to cover whole order
+            if (available >= assignment.usedAmount()) {
+
+                // decrease payment method's available funds (limit)
+                method.setLimit(available - assignment.usedAmount());
+
+                // add spent funds to the overall payment method's cost
+                costs.merge(method.getId(), assignment.usedAmount(), Double::sum);
+
+                // set order as paid
+                order.setPaid(true);
+
+                // add order's id to the set of already assigned orders
+                assignedOrders.add(order.getId());
             }
         }
 
-        // for each order
+        // code handling orders which were not paid yet
+        // for every order
         for (Order order : orders) {
 
-            // if the order is not paid
-            if (!order.isPaid()) {
+            // skip if the order has already been paid
+            if (order.isPaid()) continue;
 
-                // initialize the value of the amount left to pay
-                double leftToPay = order.getValue();
+            // get value of order and initialize variable storing amount left to pay
+            double orderValue = order.getValue();
+            double leftToPay = orderValue;
 
-                // if there are still points left to pay for the order
-                if (paymentMethodsById.get("PUNKTY").getLimit() > 0) {
+            // choose "PUNKTY" as the first payment method to cover as much as possible using points
+            PaymentMethod points = paymentMethodsById.get("PUNKTY");
 
-                    double usedPoints = Math.min(paymentMethodsById.get("PUNKTY").getLimit(), leftToPay);
-                    // add spent points to the value of all points spent
-                    costs.merge("PUNKTY", usedPoints, Double::sum);
+            // if there are points left
+            if (points.getLimit() > 0) {
 
-                    leftToPay -= usedPoints;
+                // determine how many points will be spent
+                double usedPoints = Math.min(points.getLimit(), leftToPay);
 
-                    // set the left points value to 0
-                    paymentMethodsById.get("PUNKTY").setLimit(paymentMethodsById.get("PUNKTY").getLimit() - usedPoints);
+                // check whether more than 10% of the order's value can be paid with points
+                if (usedPoints >= orderValue * 0.1) {
 
+                    // if yes, apply a 10% discount to the amount left to pay
+                    leftToPay -= orderValue * 0.1;
                 }
 
-                // pay what's left with other payment methods
-                for (PaymentMethod paymentMethod : paymentMethods) {
+                // update available points
+                points.setLimit(points.getLimit() - usedPoints);
 
-                    if (leftToPay <= 0.0001)
-                        break;
+                // add spent points to the overall payment method's value
+                costs.merge("PUNKTY", usedPoints, Double::sum);
 
-                    // if there are still funds available for a given payment method
-                    if (paymentMethod.getLimit() > 0) {
+                // update the value left to pay
+                leftToPay -= usedPoints;
+            }
 
-                        double used = Math.min(paymentMethod.getLimit(), leftToPay);
-                        paymentMethod.setLimit(paymentMethod.getLimit() - used);
-                        costs.merge(paymentMethod.getId(), used, Double::sum);
-                        leftToPay -= used;
-                    }
+            // pay the remaining cost using other payment methods
+            // for every payment method
+            for (PaymentMethod method : paymentMethods) {
+
+                // skip if the payment method is "PUNKTY"
+                if (method.getId().equals("PUNKTY")) continue;
+
+                // break if the order is already paid off
+                if (leftToPay <= 0.0001) break;
+
+                // get the amount still available for the given payment method
+                double available = method.getLimit();
+
+                // if this amount is greater than 0
+                if (available > 0) {
+
+                    // determine the used number of funds
+                    double used = Math.min(available, leftToPay);
+
+                    // subtract used number of funds from the amount still left for the given payment method
+                    method.setLimit(available - used);
+
+                    // add spent funds to the overall payment method's cost
+                    costs.merge(method.getId(), used, Double::sum);
+
+                    // subtract used funds from the amount still left to pay
+                    leftToPay -= used;
                 }
+            }
 
-                // if there is still amount to pay left and no funds left for any payment method
-                if (leftToPay > 0.0001) {
-
-                    // throw exception
-                    throw new RuntimeException("Insufficient funds for order " + order.getId());
-                } else {
-                    // if the whole order has been paid, set the order as paid and break the loop, else try paying with other payment methods
-                    order.setPaid(true);
-                }
+            if (leftToPay > 0.0001) {
+                throw new RuntimeException("Cannot pay for: " + order.getId() + " insufficient amount of funds available!");
+            } else {
+                order.setPaid(true);
             }
         }
     }
 
-    void calculateCosts() {
-        chooseBestOption();
-        costs.forEach((key, value) -> System.out.println(key + " " + value));
+    // return priority of a given payment type
+    private int getTypePriority(AssignmentType type) {
+        return switch (type) {
+            case POINTS -> 0;
+            case CARD -> 1;
+            case PARTIAL -> 2;
+        };
     }
 
+    // method printing to the standard output values of used funds for each payment method
+    public void calculateCosts() {
+        chooseBestOption();
+        costs.forEach((key, value) -> System.out.println(key + " " + String.format("%.2f", value)));
+    }
+
+    public ArrayList<Order> getOrders() {
+        return orders;
+    }
+
+    public HashMap<String, ArrayList<Order>> getOrdersByPromotion() {
+        return ordersByPromotion;
+    }
+
+    public ArrayList<PaymentMethod> getPaymentMethods() {
+        return paymentMethods;
+    }
+
+    public HashMap<String, PaymentMethod> getPaymentMethodsById() {
+        return paymentMethodsById;
+    }
+
+    public HashMap<String, Double> getCosts() {
+        return costs;
+    }
+
+    public ArrayList<PaymentAssignmentOption> getAssignments() {
+        return assignments;
+    }
 }

@@ -12,9 +12,16 @@ import java.util.List;
 // class to read data from files
 public class JsonFileReader {
 
+    // ArrayList to store orders
     ArrayList<Order> orders;
+
+    // ArrayList to store payment methods
     ArrayList<PaymentMethod> paymentMethods;
+
+    // HashMap for storing orders with promotions as keys
     HashMap<String, ArrayList<Order>> ordersByPromotion;
+
+    // HashMap for storing payment methods with IDs as keys
     HashMap<String, PaymentMethod> paymentMethodsById;
 
     public JsonFileReader(String ordersPath, String paymentMethodsPath) {
@@ -70,7 +77,7 @@ public class JsonFileReader {
                 promotions.add("PUNKTY");
 
                 // create an Order object with retrieved data and add it to the ArrayList
-                Order order = new Order(id, value, promotions);
+                Order order = new Order(id, value);
                 orders.add(order);
 
                 // for every promotion available for a given order

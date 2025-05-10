@@ -1,14 +1,14 @@
 package projects;
 
-import java.util.List;
 import java.util.Objects;
 
+// class for storing orders
 public class Order {
     private final String id;
     private final double value;
     private boolean paid;
 
-    public Order(String id, double value, List<String> promotions) {
+    public Order(String id, double value) {
         this.id = id;
         this.value = value;
         this.paid = false;
@@ -28,15 +28,6 @@ public class Order {
 
     public void setPaid(boolean paid) {
         this.paid = paid;
-    }
-
-    @Override
-    public String toString() {
-        return "Order{" +
-                "id='" + id + '\'' +
-                ", value=" + value +
-                ", paid=" + paid +
-                '}';
     }
 
     @Override
