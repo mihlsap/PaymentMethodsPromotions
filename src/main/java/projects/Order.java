@@ -7,11 +7,13 @@ public class Order {
     private final String id;
     private final double value;
     private final List<String> promotions;
+    private boolean paid;
 
     public Order(String id, double value, List<String> promotions) {
         this.id = id;
         this.value = value;
         this.promotions = promotions;
+        this.paid = false;
     }
 
     public String getId() {
@@ -26,12 +28,21 @@ public class Order {
         return promotions;
     }
 
+    public boolean isPaid() {
+        return paid;
+    }
+
+    public void setPaid(boolean paid) {
+        this.paid = paid;
+    }
+
     @Override
     public String toString() {
         return "Order{" +
                 "id='" + id + '\'' +
-                ", value='" + value + '\'' +
-                ", promotions=" + promotions.toString() +
+                ", value=" + value +
+                ", promotions=" + promotions +
+                ", paid=" + paid +
                 '}';
     }
 
@@ -39,11 +50,11 @@ public class Order {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Order order = (Order) o;
-        return Double.compare(value, order.value) == 0 && Objects.equals(id, order.id) && Objects.equals(promotions, order.promotions);
+        return Double.compare(value, order.value) == 0 && paid == order.paid && Objects.equals(id, order.id) && Objects.equals(promotions, order.promotions);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, value, promotions);
+        return Objects.hash(id, value, promotions, paid);
     }
 }
