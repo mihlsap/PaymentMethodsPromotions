@@ -14,7 +14,7 @@ public class Main {
 
 
         CalculationsClass calculationsClass = new CalculationsClass(ordersPath, paymentMethodsPath);
-        calculationsClass.showAll();
+        calculationsClass.calculateCosts();
     }
 
 }

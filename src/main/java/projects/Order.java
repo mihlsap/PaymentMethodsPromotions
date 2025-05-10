@@ -6,7 +6,7 @@ import java.util.Objects;
 public class Order {
     private final String id;
     private final double value;
-    private final List<String> promotions;
+    private final List<String> promotions; //  TODO delete this
     private boolean paid;
 
     public Order(String id, double value, List<String> promotions) {

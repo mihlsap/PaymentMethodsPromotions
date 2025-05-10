@@ -15,6 +15,7 @@ public class JsonFileReader {
     ArrayList<Order> orders;
     ArrayList<PaymentMethod> paymentMethods;
     HashMap<String, ArrayList<Order>> ordersByPromotion;
+    HashMap<String, PaymentMethod> paymentMethodsById;
 
     public JsonFileReader(String ordersPath, String paymentMethodsPath) {
         readOrders(ordersPath);
@@ -87,7 +88,6 @@ public class JsonFileReader {
             throw new RuntimeException("File not found: " + fileNotFoundException.getMessage(), fileNotFoundException);
         } catch (IOException ioException) {
             System.err.println(ioException.getMessage());
-            ioException.printStackTrace();
         }
     }
 
@@ -98,6 +98,7 @@ public class JsonFileReader {
         checkFileExtension(path);
 
         paymentMethods = new ArrayList<>();
+        paymentMethodsById = new HashMap<>();
 
         try (FileInputStream fileInputStream = new FileInputStream(path)) {
 
@@ -124,6 +125,8 @@ public class JsonFileReader {
                 // add a created PaymentMethod object to the HashMap with the id as a key
                 paymentMethods.add(paymentMethod);
 
+                paymentMethodsById.put(id, paymentMethod);
+
             }
 
             // exception handling for FileNotFoundException and IOException
@@ -131,7 +134,6 @@ public class JsonFileReader {
             throw new RuntimeException("File not found: " + fileNotFoundException.getMessage(), fileNotFoundException);
         } catch (IOException ioException) {
             System.err.println(ioException.getMessage());
-            ioException.printStackTrace();
         }
     }
 
@@ -146,5 +148,9 @@ public class JsonFileReader {
 
     public HashMap<String, ArrayList<Order>> getOrdersByPromotion() {
         return ordersByPromotion;
+    }
+
+    public HashMap<String, PaymentMethod> getPaymentMethodsById() {
+        return paymentMethodsById;
     }
 }

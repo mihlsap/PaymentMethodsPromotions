@@ -5,7 +5,7 @@ import java.util.Objects;
 public class PaymentMethod {
     private final String id;
     private final double discount;
-    private final double limit;
+    private double limit;
 
     public PaymentMethod(String id, double discount, double limit) {
         this.id = id;
@@ -23,6 +23,10 @@ public class PaymentMethod {
 
     public double getLimit() {
         return limit;
+    }
+
+    public void setLimit(double limit) {
+        this.limit = limit;
     }
 
     @Override
