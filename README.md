@@ -28,3 +28,4 @@
   * Additional files that are used for unit testing are located in `src/test/data`
 
 ### All functions of the program have been described in the source code using comments
+### JAR file is located under `out/artifacts/PaymentMethodsPromotions_jar/PaymentMethodsPromotions.jar`
