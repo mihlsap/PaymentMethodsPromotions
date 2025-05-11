@@ -1,0 +1,5 @@
+[
+  { "id": "Z1", "value": "120.00", "promotions": ["BankA"] },
+  { "id": "Z2", "value": "100.00", "promotions": ["BankA"] },
+  { "id": "Z3", "value": "80.00" }
+]

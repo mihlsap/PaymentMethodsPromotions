@@ -1,0 +1,17 @@
+[
+  {
+    "id": "PUNKTY",
+    "discount": "15",
+    "limit": "150.00"
+  },
+  {
+    "id": "BankX",
+    "discount": "10",
+    "limit": "250.00"
+  },
+  {
+    "id": "BankY",
+    "discount": "5",
+    "limit": "100.00"
+  }
+]

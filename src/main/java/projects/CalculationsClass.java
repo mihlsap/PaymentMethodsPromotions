@@ -109,112 +109,119 @@ public class CalculationsClass {
             // if types of payment are different, sort them in order of priority
             if (typePriority != 0)
                 return typePriority;
-
-            // if they are the same, sort them in order of decreasing discount
             return Double.compare(b.discount(), a.discount());
         });
 
-        // set for storing IDs of orders already assigned to a particular payment method
+        // set for soring assigned orders
         Set<String> assignedOrders = new HashSet<>();
 
-        // for each assignment
+        // for each assignment option
         for (PaymentAssignmentOption assignment : assignments) {
 
             Order order = assignment.order();
 
-            // skip if the order has been already paid or the order has been already assigned to some payment method
-            if (order.isPaid() || assignedOrders.contains(order.getId())) continue;
+            // skip if the order is already paid or has been handled
+            if (order.isPaid() || assignedOrders.contains(order.getId()))
+                continue;
 
-            // get a payment method assigned to this assignment and funds available for it
+            // get payment method and it's available funds
             PaymentMethod method = paymentMethodsById.get(assignment.paymentMethodId());
             double available = method.getLimit();
 
-            // if there are enough available funds for given payment method to cover whole order
+            // if the assignment is for a partial payment, check if there are enough funds for it
+            if (assignment.assignmentType() == AssignmentType.PARTIAL) {
+
+                double leftToPay = assignment.cost() - assignment.usedAmount();
+
+                // calculate funds left for all payment methods except "PUNKTY"
+                double otherFunds = paymentMethods.stream().filter(pm -> !pm.getId().equals("PUNKTY"))
+                        .mapToDouble(PaymentMethod::getLimit).sum();
+
+                // skip if there are not enough funds for the partial payment
+                if (leftToPay > otherFunds)
+                    continue;
+            }
+
+            // if there are more funds left for this payment method than there is to pay for that order
             if (available >= assignment.usedAmount()) {
 
-                // decrease payment method's available funds (limit)
+                // update method's payment limit
                 method.setLimit(available - assignment.usedAmount());
 
-                // add spent funds to the overall payment method's cost
+                // add cost to the sum of funds spent for specific payment method
                 costs.merge(method.getId(), assignment.usedAmount(), Double::sum);
 
                 // set order as paid
                 order.setPaid(true);
 
-                // add order's id to the set of already assigned orders
+                // add order's id to set of assigned orders
                 assignedOrders.add(order.getId());
             }
         }
 
         // code handling orders which were not paid yet
-        // for every order
         for (Order order : orders) {
 
-            // skip if the order has already been paid
+            // skip if the order is already paid
             if (order.isPaid()) continue;
 
-            // get value of order and initialize variable storing amount left to pay
             double orderValue = order.getValue();
-            double leftToPay = orderValue;
+            double tentativeLeftToPay = orderValue;
+            double tentativeUsedPoints = 0.0;
 
-            // choose "PUNKTY" as the first payment method to cover as much as possible using points
+            // calculate funds left for all payment methods except "PUNKTY"
+            double fundsLeft = paymentMethods.stream()
+                    .filter(pm -> !pm.getId().equals("PUNKTY"))
+                    .mapToDouble(PaymentMethod::getLimit)
+                    .sum();
+
             PaymentMethod points = paymentMethodsById.get("PUNKTY");
 
-            // if there are points left
+            // if there are still points left
             if (points.getLimit() > 0) {
 
-                // determine how many points will be spent
-                double usedPoints = Math.min(points.getLimit(), leftToPay);
+                // calculate how many points can be used for this order
+                tentativeUsedPoints = Math.min(points.getLimit(), tentativeLeftToPay);
 
-                // check whether more than 10% of the order's value can be paid with points
-                if (usedPoints >= orderValue * 0.1) {
-
-                    // if yes, apply a 10% discount to the amount left to pay
-                    leftToPay -= orderValue * 0.1;
+                // if there are enough points to cober at least 10% of the order's value, apply discount
+                if (tentativeUsedPoints >= orderValue * 0.1) {
+                    tentativeLeftToPay -= orderValue * 0.1;
                 }
+            }
 
-                // update available points
+            double totalFundsAvailable = tentativeUsedPoints + fundsLeft;
+
+            // skip if the amount left to pay is bigger than funds left
+            if (tentativeLeftToPay > totalFundsAvailable) {
+                continue;
+            }
+
+            double leftToPay = orderValue;
+
+            if (points.getLimit() > 0) {
+                double usedPoints = Math.min(points.getLimit(), leftToPay);
+                boolean applyDiscount = usedPoints >= orderValue * 0.1;
+                if (applyDiscount) leftToPay -= orderValue * 0.1;
                 points.setLimit(points.getLimit() - usedPoints);
-
-                // add spent points to the overall payment method's value
                 costs.merge("PUNKTY", usedPoints, Double::sum);
-
-                // update the value left to pay
                 leftToPay -= usedPoints;
             }
 
-            // pay the remaining cost using other payment methods
-            // for every payment method
             for (PaymentMethod method : paymentMethods) {
-
-                // skip if the payment method is "PUNKTY"
                 if (method.getId().equals("PUNKTY")) continue;
-
-                // break if the order is already paid off
                 if (leftToPay <= 0.0001) break;
 
-                // get the amount still available for the given payment method
                 double available = method.getLimit();
-
-                // if this amount is greater than 0
                 if (available > 0) {
-
-                    // determine the used number of funds
                     double used = Math.min(available, leftToPay);
-
-                    // subtract used number of funds from the amount still left for the given payment method
                     method.setLimit(available - used);
-
-                    // add spent funds to the overall payment method's cost
                     costs.merge(method.getId(), used, Double::sum);
-
-                    // subtract used funds from the amount still left to pay
                     leftToPay -= used;
                 }
             }
 
             if (leftToPay > 0.0001) {
-                throw new RuntimeException("Cannot pay for: " + order.getId() + " insufficient amount of funds available!");
+                throw new RuntimeException("Cannot pay for " + order.getId() + " - insufficient amount of funds!");
             } else {
                 order.setPaid(true);
             }
@@ -233,9 +240,25 @@ public class CalculationsClass {
     // method printing to the standard output values of used funds for each payment method
     public void calculateCosts() {
         chooseBestOption();
+
+        // adding unused payment methods to the costs HashMap
+        for (PaymentMethod paymentMethod : paymentMethods) {
+            costs.putIfAbsent(paymentMethod.getId(), 0.0);
+        }
+
+        // printing costs for each payment method to the standard output
         costs.forEach((key, value) -> System.out.println(key + " " + String.format("%.2f", value)));
+
+        // if order still has not been paid, print an error message
+        for (Order order : orders) {
+            if (!order.isPaid()) {
+                System.err.println("Insufficient amount of funds to pay for all orders!");
+                break;
+            }
+        }
     }
 
+    // getters for the used collections
     public ArrayList<Order> getOrders() {
         return orders;
     }

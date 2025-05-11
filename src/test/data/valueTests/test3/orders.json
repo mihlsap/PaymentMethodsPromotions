@@ -1,0 +1,4 @@
+[
+  { "id": "PB1", "value": "100.00", "promotions": ["CardA"] },
+  { "id": "PB2", "value": "150.00", "promotions": ["CardA"] }
+]

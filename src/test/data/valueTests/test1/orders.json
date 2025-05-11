@@ -1,0 +1,25 @@
+[
+  {
+    "id": "ORDER_A",
+    "value": "120.00",
+    "promotions": ["BankX"]
+  },
+  {
+    "id": "ORDER_B",
+    "value": "80.00",
+    "promotions": ["BankY"]
+  },
+  {
+    "id": "ORDER_C",
+    "value": "200.00",
+    "promotions": ["BankX", "BankY"]
+  },
+  {
+    "id": "ORDER_D",
+    "value": "50.00"
+  },
+  {
+    "id": "ORDER_E",
+    "value": "70.00"
+  }
+]

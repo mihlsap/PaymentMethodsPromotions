@@ -1,12 +1,18 @@
 # PaymentMethodsPromotions
-## Project purpose
-* This project is supposed to calculate the most profitable way of paying for a list of orders, saving as much money thanks to embracing discounts as possible.
-* Here is a set of rules it must follow:
-  * Every order has a set of discounts available assigned to it
-  * There are 
-  * If the whole order is paid using one card, which has a discount assigned to it, then it can be embraced for that order.
-  * If at least 10% of the order's value
-## Project structure:
+[//]: # (## Project's purpose)
+
+[//]: # (* This project is supposed to calculate the most profitable way of paying for a list of orders, saving as much money as possible thanks to embracing discounts.)
+
+[//]: # (* Here is a set of rules it must follow:)
+
+[//]: # (  * Every order has a set of discounts available assigned to it)
+
+[//]: # (  * There are )
+
+[//]: # (  * If the whole order is paid using one card, which has a discount assigned to it, then it can be embraced for that order.)
+
+[//]: # (  * If at least 10%, but not the whole of the order's value is paid for using points, then there is a 10% discount available.)
+## Project's structure:
 * Whole source code is located in `src/main/java/projects`
   * It consists of the following classes:
     * `Main` — used to run the program
