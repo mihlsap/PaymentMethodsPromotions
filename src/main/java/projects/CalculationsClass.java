@@ -312,4 +312,5 @@ public class CalculationsClass {
     public ArrayList<PaymentAssignmentOption> getAssignments() {
         return assignments;
     }
+
 }
