@@ -162,6 +162,8 @@ public class CalculationsClass {
         // code handling orders which were not paid yet
         for (Order order : orders) {
 
+            // first check whether the order can be paid partially by points and other payment methods
+
             // skip if the order is already paid
             if (order.isPaid()) continue;
 
@@ -183,7 +185,7 @@ public class CalculationsClass {
                 // calculate how many points can be used for this order
                 tentativeUsedPoints = Math.min(points.getLimit(), tentativeLeftToPay);
 
-                // if there are enough points to cober at least 10% of the order's value, apply discount
+                // if there are enough points to cover at least 10% of the order's value, apply discount
                 if (tentativeUsedPoints >= orderValue * 0.1) {
                     tentativeLeftToPay -= orderValue * 0.1;
                 }
@@ -191,37 +193,65 @@ public class CalculationsClass {
 
             double totalFundsAvailable = tentativeUsedPoints + fundsLeft;
 
-            // skip if the amount left to pay is bigger than funds left
+            // skip if the amount left to pay is bigger than funds left, which means that the order cannot be covered
             if (tentativeLeftToPay > totalFundsAvailable) {
                 continue;
             }
 
             double leftToPay = orderValue;
 
+            // if there are still points left
             if (points.getLimit() > 0) {
+
+                // calculate how many points can be used for this order
                 double usedPoints = Math.min(points.getLimit(), leftToPay);
+
+                // check whether a discount can be applied
                 boolean applyDiscount = usedPoints >= orderValue * 0.1;
-                if (applyDiscount) leftToPay -= orderValue * 0.1;
+
+                // if it can be, then apply it
+                if (applyDiscount)
+                    leftToPay -= orderValue * 0.1;
+
+                // deduct used points from the payment method's limit and add them to the costs HashMap
                 points.setLimit(points.getLimit() - usedPoints);
                 costs.merge("PUNKTY", usedPoints, Double::sum);
+
+                // deduct used points from the remaining amount to pay
                 leftToPay -= usedPoints;
             }
 
+            // try paying for the remaining amount with other payment methods
+            // for each payment method, except "PUNKTY"
             for (PaymentMethod method : paymentMethods) {
                 if (method.getId().equals("PUNKTY")) continue;
+
+                // skip if the order has already been paid
                 if (leftToPay <= 0.0001) break;
 
                 double available = method.getLimit();
+
+                // if there are still funds left for this payment method, use them for this order
                 if (available > 0) {
+
+                    // calculate how many funds can be used for this order
                     double used = Math.min(available, leftToPay);
+
+                    // deduct used funds from the payment method's limit and add them to the costs HashMap'
                     method.setLimit(available - used);
                     costs.merge(method.getId(), used, Double::sum);
+
+                    // deduct used funds from the remaining amount to pay
                     leftToPay -= used;
                 }
             }
 
+            // if there are still funds left to pay for this order, then it cannot be covered by any payment method
+            // throw exception and stop the loop
             if (leftToPay > 0.0001) {
                 throw new RuntimeException("Cannot pay for " + order.getId() + " - insufficient amount of funds!");
+
+            // else mark order as paid
             } else {
                 order.setPaid(true);
             }
@@ -249,7 +279,7 @@ public class CalculationsClass {
         // printing costs for each payment method to the standard output
         costs.forEach((key, value) -> System.out.println(key + " " + String.format("%.2f", value)));
 
-        // if order still has not been paid, print an error message
+        // if the order still has not been paid, print an error message
         for (Order order : orders) {
             if (!order.isPaid()) {
                 System.err.println("Insufficient amount of funds to pay for all orders!");
